@@ -84,25 +84,25 @@ impl WordGenerator {
         loop {
             // Build current word
             let word: String = self.slots.iter()
-                .enumerate()
-                .map(|(i, slot)| slot.options[indices[i]])
+                .zip(&indices)
+                .map(|(slot, &i)| slot.options[i])
                 .collect();
             words.push(word);
             
-            // Increment indices
-            let mut carry = 1;
-            for i in (0..self.slots.len()).rev() {
-                indices[i] += carry;
-                if indices[i] >= self.slots[i].options.len() {
-                    indices[i] = 0;
-                    carry = 1;
-                } else {
-                    carry = 0;
-                    break;
+            // Increment indices like a counter
+            let mut carry = true;
+            for i in (0..indices.len()).rev() {
+                if carry {
+                    indices[i] += 1;
+                    if indices[i] >= self.slots[i].options.len() {
+                        indices[i] = 0;
+                    } else {
+                        carry = false;
+                    }
                 }
             }
             
-            if carry == 1 {
+            if carry {
                 break;
             }
         }
