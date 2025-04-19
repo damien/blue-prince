@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use gallry_puzzle_soulver::{Slot, WordGenerator};
 
 #[test]
@@ -20,13 +21,13 @@ fn test_iterator() {
 
 #[test]
 fn test_generate() {
-    let mut word_generator = WordGenerator::new(
+    // Use with_slots to avoid potential file not found errors
+    let mut word_generator = WordGenerator::with_slots(
         vec![
             Slot::new(vec!['c', 'b', 'r']),
             Slot::new(vec!['a', 'i', 'o']),
             Slot::new(vec!['t', 's', 'e']),
-        ],
-        Some(vec![]) // Empty word list means no filtering
+        ]
     );
 
     word_generator.generate();
@@ -43,30 +44,41 @@ fn test_generate() {
         "rot".to_string(), "ros".to_string(), "roe".to_string()
     ];
     
-    assert_eq!(word_generator.get_words(), Some(expected_words));
+    // Convert iterator to Vec for comparison
+    let generated_words = word_generator.get_words().unwrap().collect::<Vec<_>>();
+    assert_eq!(generated_words, expected_words);
 }
 
 #[test]
 fn test_get_words_with_filtering() {
     // Create a list of allowed words
-    let word_list = vec![
+    let word_list: HashSet<String> = [
         "cat".to_string(), 
         "bot".to_string(),
         "rie".to_string(),
-    ];
+    ].into_iter().collect();
     
-    let mut word_generator = WordGenerator::new(
+    // Use with_slots and then set the word list
+    let mut word_generator = WordGenerator::with_slots(
         vec![
             Slot::new(vec!['c', 'b', 'r']),
             Slot::new(vec!['a', 'i', 'o']),
             Slot::new(vec!['t', 's', 'e']),
-        ],
-        Some(word_list.clone())
+        ]
     );
+    
+    word_generator.set_word_list(word_list.clone());
     
     // Generate all possible words
     word_generator.generate();
     
     // Only words in the word list should be returned
-    assert_eq!(word_generator.get_words(), Some(word_list));
+    // Convert to sorted Vec for predictable comparison
+    let mut generated_words = word_generator.get_words().unwrap().collect::<Vec<_>>();
+    generated_words.sort();
+    
+    let mut expected_words = word_list.into_iter().collect::<Vec<_>>();
+    expected_words.sort();
+    
+    assert_eq!(generated_words, expected_words);
 }
