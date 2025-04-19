@@ -5,3 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "word_generator_benchmark"
+harness = false
