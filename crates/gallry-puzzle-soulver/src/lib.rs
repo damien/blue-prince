@@ -78,30 +78,15 @@ impl WordGenerator {
 
     // Generate words using the current slot values.
     fn generate(&mut self) {
-        let mut words = Vec::new();
-        let mut indices = vec![0; self.slots.len()];
-        
-        while indices[0] < self.slots[0].options.len() {
-            // Build current word
-            let word: String = self.slots.iter()
-                .zip(&indices)
-                .map(|(slot, &i)| slot.options[i])
-                .collect();
-            words.push(word);
-            
-            // Increment indices
-            for i in (0..indices.len()).rev() {
-                indices[i] += 1;
-                if indices[i] < self.slots[i].options.len() {
-                    break;
-                }
-                if i > 0 {
-                    indices[i] = 0;
-                }
-            }
-        }
-        
-        self.words = Some(words);
+        self.words = Some(
+            self.slots.iter()
+                .map(|slot| slot.options.iter())
+                .fold(vec![String::new()], |acc, options| {
+                    acc.iter()
+                        .flat_map(|prefix| options.clone().map(move |&c| format!("{}{}", prefix, c)))
+                        .collect()
+                })
+        );
     }
 }
 
