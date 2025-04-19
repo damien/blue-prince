@@ -9,13 +9,13 @@ use std::ops::Deref;
 // Define a slot as a character with a list of possible characters and a selected character.
 //
 // Dereferencing the slot returns the selected character.
-struct Slot {
+pub struct Slot {
     options: Vec<char>,
     current: usize, // index of the selected character
 }
 
 impl Slot {
-    fn new(options: Vec<char>) -> Self {
+    pub fn new(options: Vec<char>) -> Self {
         Self { options, current: 0 }
     }
 }
@@ -26,24 +26,12 @@ impl Into<String> for Slot {
     }
 }
 
-#[test]
-fn test_to_string() {
-    let slot = Slot::new(vec!['a', 'b', 'c']);
-    assert_eq!(slot.to_string(), "a");
-}
-
 impl Deref for Slot {
     type Target = char;
 
     fn deref(&self) -> &Self::Target {
         &self.options[self.current]
     }
-}
-
-#[test]
-fn test_deref() {
-    let slot = Slot::new(vec!['a', 'b', 'c']);
-    assert_eq!(*slot, 'a');
 }
 
 impl Iterator for Slot {
@@ -60,24 +48,18 @@ impl Iterator for Slot {
     }
 }
 
-#[test]
-fn test_iterator() {
-    let slot = Slot::new(vec!['a', 'b', 'c']);
-    assert_eq!(slot.collect::<Vec<_>>(), vec!['a', 'b', 'c']);
-}
-
-struct WordGenerator {
+pub struct WordGenerator {
     slots: Vec<Slot>,
     words: Option<Vec<String>>,
 }
 
 impl WordGenerator {
-    fn new(slots: Vec<Slot>) -> Self {
+    pub fn new(slots: Vec<Slot>) -> Self {
         Self { slots, words: None }
     }
 
     // Generate words using the current slot values.
-    fn generate(&mut self) {
+    pub fn generate(&mut self) {
         self.words = Some(
             self.slots.iter()
                 .map(|slot| slot.options.iter())
@@ -88,29 +70,8 @@ impl WordGenerator {
                 })
         );
     }
-}
-
-#[test]
-fn test_generate() {
-    let mut word_generator = WordGenerator::new(
-        vec![
-            Slot::new(vec!['c', 'b', 'r']),
-            Slot::new(vec!['a', 'i', 'o']),
-            Slot::new(vec!['t', 's', 'e']),
-        ]
-    );
-
-    word_generator.generate();
-
-    assert_eq!(word_generator.words, Some(vec![
-        "cat".to_string(), "cas".to_string(), "cae".to_string(),
-        "cit".to_string(), "cis".to_string(), "cie".to_string(),
-        "cot".to_string(), "cos".to_string(), "coe".to_string(),
-        "bat".to_string(), "bas".to_string(), "bae".to_string(),
-        "bit".to_string(), "bis".to_string(), "bie".to_string(),
-        "bot".to_string(), "bos".to_string(), "boe".to_string(),
-        "rat".to_string(), "ras".to_string(), "rae".to_string(),
-        "rit".to_string(), "ris".to_string(), "rie".to_string(),
-        "rot".to_string(), "ros".to_string(), "roe".to_string()
-    ]));
+    
+    pub fn get_words(&self) -> Option<&Vec<String>> {
+        self.words.as_ref()
+    }
 }
