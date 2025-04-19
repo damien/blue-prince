@@ -68,17 +68,46 @@ fn test_iterator() {
 
 struct WordGenerator {
     slots: Vec<Slot>,
-    current: usize, // index of the selected slot
     words: Option<Vec<String>>,
 }
 
 impl WordGenerator {
     fn new(slots: Vec<Slot>) -> Self {
-        Self { slots, current: 0, words: None }
+        Self { slots, words: None }
     }
 
     // Generate words using the current slot values.
     fn generate(&mut self) {
+        let mut words = Vec::new();
+        let mut indices = vec![0; self.slots.len()];
+        
+        loop {
+            // Build current word
+            let word: String = self.slots.iter()
+                .enumerate()
+                .map(|(i, slot)| slot.options[indices[i]])
+                .collect();
+            words.push(word);
+            
+            // Increment indices
+            let mut carry = 1;
+            for i in (0..self.slots.len()).rev() {
+                indices[i] += carry;
+                if indices[i] >= self.slots[i].options.len() {
+                    indices[i] = 0;
+                    carry = 1;
+                } else {
+                    carry = 0;
+                    break;
+                }
+            }
+            
+            if carry == 1 {
+                break;
+            }
+        }
+        
+        self.words = Some(words);
     }
 }
 
@@ -86,16 +115,23 @@ impl WordGenerator {
 fn test_generate() {
     let mut word_generator = WordGenerator::new(
         vec![
-            Slot::new(vec!['a', 'b', 'c']),
-            Slot::new(vec!['a', 'b', 'c'])
+            Slot::new(vec!['c', 'b', 'r']),
+            Slot::new(vec!['a', 'i', 'o']),
+            Slot::new(vec!['t', 's', 'e']),
         ]
     );
 
     word_generator.generate();
 
     assert_eq!(word_generator.words, Some(vec![
-        "aa".to_string(), "ab".to_string(), "ac".to_string(),
-        "ba".to_string(), "bb".to_string(), "bc".to_string(), 
-        "ca".to_string(), "cb".to_string(), "cc".to_string()
+        "cat".to_string(), "cas".to_string(), "cae".to_string(),
+        "cit".to_string(), "cis".to_string(), "cie".to_string(),
+        "cot".to_string(), "cos".to_string(), "coe".to_string(),
+        "bat".to_string(), "bas".to_string(), "bae".to_string(),
+        "bit".to_string(), "bis".to_string(), "bie".to_string(),
+        "bot".to_string(), "bos".to_string(), "boe".to_string(),
+        "rat".to_string(), "ras".to_string(), "rae".to_string(),
+        "rit".to_string(), "ris".to_string(), "rie".to_string(),
+        "rot".to_string(), "ros".to_string(), "roe".to_string()
     ]));
 }
