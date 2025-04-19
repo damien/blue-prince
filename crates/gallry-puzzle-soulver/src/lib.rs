@@ -8,6 +8,9 @@ use std::ops::Deref;
 use std::collections::HashSet;
 use anyhow::{Result, Context};
 
+// Embed the wordlist at compile time
+const EMBEDDED_WORDLIST: &str = include_str!("../data/words.txt");
+
 // Define a slot as a character with a list of possible characters and a selected character.
 //
 // Dereferencing the slot returns the selected character.
@@ -59,16 +62,13 @@ pub struct WordGenerator {
 impl WordGenerator {
     /// Create a new WordGenerator with the given slots and word list
     /// 
-    /// If word_list is None, it will attempt to read words from wordlist.txt file
-    pub fn new(slots: Vec<Slot>, word_list: Option<HashSet<String>>) -> Result<Self> {
+    /// If word_list is None, it will use the embedded wordlist
+    pub fn new(slots: Vec<Slot>, word_list: Option<HashSet<String>>) -> Self {
         let word_list = match word_list {
             Some(list) => Some(list),
             None => {
-                // Try to read wordlist.txt, but don't fail if it doesn't exist
-                let content = std::fs::read_to_string("wordlist.txt")
-                    .context("Failed to read wordlist.txt")?;
-                
-                let word_set = content
+                // Use the embedded wordlist
+                let word_set: HashSet<String> = EMBEDDED_WORDLIST
                     .lines()
                     .map(|line| line.to_string())
                     .collect();
@@ -77,20 +77,40 @@ impl WordGenerator {
             }
         };
         
-        Ok(Self { 
+        Self { 
             slots, 
             words: None, 
             word_list
-        })
+        }
     }
     
-    /// Create a WordGenerator with the given slots and empty word list
+    /// Create a WordGenerator with the given slots and the default embedded word list
     pub fn with_slots(slots: Vec<Slot>) -> Self {
+        Self::new(slots, None)
+    }
+    
+    /// Create a WordGenerator with the given slots and an empty word list
+    /// (no word filtering will be applied)
+    pub fn with_no_filtering(slots: Vec<Slot>) -> Self {
         Self {
             slots,
             words: None,
             word_list: Some(HashSet::new()),
         }
+    }
+    
+    /// Attempt to load a custom word list from a file at runtime
+    pub fn load_word_list_from_file(&mut self, path: &str) -> Result<()> {
+        let content = std::fs::read_to_string(path)
+            .context(format!("Failed to read word list from {}", path))?;
+        
+        let word_set: HashSet<String> = content
+            .lines()
+            .map(|line| line.to_string())
+            .collect();
+        
+        self.word_list = Some(word_set);
+        Ok(())
     }
 
     /// Generate words using the current slot values.
