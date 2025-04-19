@@ -81,7 +81,7 @@ impl WordGenerator {
         let mut words = Vec::new();
         let mut indices = vec![0; self.slots.len()];
         
-        loop {
+        while indices[0] < self.slots[0].options.len() {
             // Build current word
             let word: String = self.slots.iter()
                 .zip(&indices)
@@ -89,21 +89,15 @@ impl WordGenerator {
                 .collect();
             words.push(word);
             
-            // Increment indices like a counter
-            let mut carry = true;
+            // Increment indices
             for i in (0..indices.len()).rev() {
-                if carry {
-                    indices[i] += 1;
-                    if indices[i] >= self.slots[i].options.len() {
-                        indices[i] = 0;
-                    } else {
-                        carry = false;
-                    }
+                indices[i] += 1;
+                if indices[i] < self.slots[i].options.len() {
+                    break;
                 }
-            }
-            
-            if carry {
-                break;
+                if i > 0 {
+                    indices[i] = 0;
+                }
             }
         }
         
