@@ -155,16 +155,11 @@ impl Iterator for Slot {
 /// ];
 ///
 /// // Create a generator with the default embedded word list
-/// let mut generator = WordGenerator::with_slots(slots);
-///
-/// // Generate all possible words
-/// generator.generate();
+/// let generator = WordGenerator::with_slots(slots);
 ///
 /// // Print all valid words
-/// if let Some(words) = generator.get_words() {
-///     for word in words {
-///         println!("{}", word);
-///     }
+/// for word in generator.iter() {
+///     println!("{}", word);
 /// }
 /// ```
 ///
@@ -187,11 +182,10 @@ impl Iterator for Slot {
 /// ];
 ///
 /// // Create generator with custom word list
-/// let mut generator = WordGenerator::new(slots, Some(word_list));
+/// let generator = WordGenerator::new(slots, Some(word_list));
 ///
-/// // Generate and filter words
-/// generator.generate();
-/// let valid_words: Vec<_> = generator.get_words().unwrap().collect();
+/// // Get valid words
+/// let valid_words: Vec<String> = generator.iter().collect();
 ///
 /// // Should contain both "cat" and "dog"
 /// assert_eq!(valid_words.len(), 2);
@@ -199,10 +193,150 @@ impl Iterator for Slot {
 pub struct WordGenerator {
     /// The slots defining character options for each position
     slots: Vec<Slot>,
-    /// All generated words (unfiltered)
-    words: Option<Vec<String>>,
     /// Optional word list for filtering
     word_list: Option<HashSet<String>>,
+}
+
+/// An iterator that generates and filters words based on slot options
+pub struct WordIter<'a> {
+    generator: &'a WordGenerator,
+    current_indices: Vec<usize>,
+    slot_sizes: Vec<usize>,
+    done: bool,
+}
+
+impl<'a> WordIter<'a> {
+    fn new(generator: &'a WordGenerator) -> Self {
+        let slot_sizes: Vec<_> = generator.slots
+            .iter()
+            .map(|slot| slot.options.len())
+            .collect();
+            
+        let has_options = slot_sizes.iter().all(|&size| size > 0);
+        
+        Self {
+            generator,
+            current_indices: vec![0; generator.slots.len()],
+            slot_sizes,
+            done: !has_options,
+        }
+    }
+    
+    fn build_word(&self) -> String {
+        let mut word = String::with_capacity(self.current_indices.len());
+        for (slot_idx, &char_idx) in self.current_indices.iter().enumerate() {
+            word.push(self.generator.slots[slot_idx].options[char_idx]);
+        }
+        word
+    }
+    
+    fn increment(&mut self) -> bool {
+        for i in (0..self.current_indices.len()).rev() {
+            self.current_indices[i] += 1;
+            if self.current_indices[i] < self.slot_sizes[i] {
+                return true;
+            }
+            // Reset this position and carry to next position
+            self.current_indices[i] = 0;
+        }
+        // If we get here, we've overflowed
+        self.done = true;
+        false
+    }
+}
+
+impl<'a> Iterator for WordIter<'a> {
+    type Item = String;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        
+        loop {
+            let word = self.build_word();
+            
+            // Prepare for next iteration
+            let has_next = self.increment();
+            
+            // Check if the word is in the dictionary
+            if let Some(word_list) = &self.generator.word_list {
+                if word_list.is_empty() || word_list.contains(&word) {
+                    return Some(word);
+                }
+                
+                // Not in the dictionary, continue if we have more words
+                if !has_next {
+                    return None;
+                }
+            } else {
+                // No filtering, return all words
+                return Some(word);
+            }
+        }
+    }
+}
+
+/// An iterator that yields all possible combinations without filtering
+pub struct AllCombinationsIter<'a> {
+    slots: &'a [Slot],
+    current_indices: Vec<usize>,
+    slot_sizes: Vec<usize>,
+    done: bool,
+}
+
+impl<'a> AllCombinationsIter<'a> {
+    fn new(slots: &'a [Slot]) -> Self {
+        let slot_sizes: Vec<_> = slots
+            .iter()
+            .map(|slot| slot.options.len())
+            .collect();
+            
+        let has_options = slot_sizes.iter().all(|&size| size > 0);
+        
+        Self {
+            slots,
+            current_indices: vec![0; slots.len()],
+            slot_sizes,
+            done: !has_options,
+        }
+    }
+    
+    fn build_word(&self) -> String {
+        let mut word = String::with_capacity(self.current_indices.len());
+        for (slot_idx, &char_idx) in self.current_indices.iter().enumerate() {
+            word.push(self.slots[slot_idx].options[char_idx]);
+        }
+        word
+    }
+    
+    fn increment(&mut self) -> bool {
+        for i in (0..self.current_indices.len()).rev() {
+            self.current_indices[i] += 1;
+            if self.current_indices[i] < self.slot_sizes[i] {
+                return true;
+            }
+            // Reset this position and carry to next position
+            self.current_indices[i] = 0;
+        }
+        // If we get here, we've overflowed
+        self.done = true;
+        false
+    }
+}
+
+impl<'a> Iterator for AllCombinationsIter<'a> {
+    type Item = String;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        
+        let word = self.build_word();
+        self.increment();
+        Some(word)
+    }
 }
 
 impl WordGenerator {
@@ -250,7 +384,6 @@ impl WordGenerator {
 
         Self {
             slots,
-            words: None,
             word_list,
         }
     }
@@ -280,8 +413,8 @@ impl WordGenerator {
 
     /// Creates a `WordGenerator` with the given slots and an empty word list.
     ///
-    /// With an empty word list, no filtering will be applied, so `get_words()`
-    /// will return all generated words.
+    /// With an empty word list, no filtering will be applied, so all possible
+    /// word combinations will be returned by the iterator.
     ///
     /// # Parameters
     ///
@@ -301,7 +434,6 @@ impl WordGenerator {
     pub fn with_no_filtering(slots: Vec<Slot>) -> Self {
         Self {
             slots,
-            words: None,
             word_list: Some(HashSet::new()),
         }
     }
@@ -346,110 +478,54 @@ impl WordGenerator {
         Ok(())
     }
 
-    /// Generates all possible words based on the character options in each slot.
+    /// Returns an iterator over the valid words based on the slots and word list.
     ///
-    /// This method must be called before `get_words()` or `get_all_words()`
-    /// will return any results.
+    /// This method generates words on-demand as the iterator is consumed, providing
+    /// a zero-copy implementation until a word is actually returned.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use gallry_puzzle_soulver::{Slot, WordGenerator};
-    ///
-    /// let mut generator = WordGenerator::with_slots(vec![
-    ///     Slot::new(vec!['c', 'd']),
-    ///     Slot::new(vec!['a', 'o']),
-    ///     Slot::new(vec!['t', 'g']),
-    /// ]);
-    ///
-    /// // Generate all possible words
-    /// generator.generate();
-    /// ```
-    pub fn generate(&mut self) {
-        self.words = Some(self.slots.iter().map(|slot| slot.options.iter()).fold(
-            vec![String::new()],
-            |acc, options| {
-                acc.iter()
-                    .flat_map(|prefix| options.clone().map(move |&c| format!("{}{}", prefix, c)))
-                    .collect()
-            },
-        ));
-    }
-
-    /// Returns an iterator over the generated words, filtered by the word list.
-    ///
-    /// If no word list is set, or if the word list is empty, all generated words
-    /// will be returned.
-    ///
-    /// # Returns
-    ///
-    /// * `Some(Iterator)` - An iterator yielding filtered words
-    /// * `None` - If no words have been generated yet (call `generate()` first)
+    /// If no word list is set, or if the word list is empty, all possible word
+    /// combinations will be returned.
     ///
     /// # Examples
     ///
     /// ```
     /// use gallry_puzzle_soulver::{Slot, WordGenerator};
     ///
-    /// let mut generator = WordGenerator::with_slots(vec![
+    /// let generator = WordGenerator::with_slots(vec![
     ///     Slot::new(vec!['c', 'd']),
     ///     Slot::new(vec!['a', 'o']),
     ///     Slot::new(vec!['t', 'g']),
     /// ]);
-    ///
-    /// generator.generate();
     ///
     /// // Get all valid words as a Vec
-    /// if let Some(words_iter) = generator.get_words() {
-    ///     let words: Vec<_> = words_iter.collect();
-    ///     println!("Found {} valid words", words.len());
-    /// }
+    /// let words: Vec<_> = generator.iter().collect();
+    /// println!("Found {} valid words", words.len());
     /// ```
-    pub fn get_words(&self) -> Option<impl Iterator<Item = String> + '_> {
-        self.words.as_ref().map(|words| {
-            words.iter().filter_map(move |word| {
-                // If we have a non-empty word list, check if the word is in it
-                if let Some(word_list) = &self.word_list {
-                    if word_list.is_empty() || word_list.contains(word) {
-                        Some(word.clone())
-                    } else {
-                        None
-                    }
-                } else {
-                    // No word list, include all words
-                    Some(word.clone())
-                }
-            })
-        })
+    pub fn iter(&self) -> WordIter<'_> {
+        WordIter::new(self)
     }
 
-    /// Returns a reference to all generated words without filtering.
+    /// Returns an iterator over all possible combinations without filtering.
     ///
     /// This method is useful when you need access to all possible combinations,
     /// regardless of whether they exist in the word list.
     ///
-    /// # Returns
-    ///
-    /// * `Some(&Vec<String>)` - A reference to all generated words
-    /// * `None` - If no words have been generated yet (call `generate()` first)
-    ///
     /// # Examples
     ///
     /// ```
     /// use gallry_puzzle_soulver::{Slot, WordGenerator};
     ///
-    /// let mut generator =
-    ///     WordGenerator::with_slots(vec![Slot::new(vec!['c', 'd']), Slot::new(vec!['a', 'o'])]);
-    ///
-    /// generator.generate();
+    /// let generator = WordGenerator::with_slots(vec![
+    ///     Slot::new(vec!['c', 'd']),
+    ///     Slot::new(vec!['a', 'o']),
+    /// ]);
     ///
     /// // Get all possible combinations
-    /// if let Some(all_words) = generator.get_all_words() {
-    ///     println!("All possible combinations: {:?}", all_words);
-    /// }
+    /// let all_combinations: Vec<String> = generator.all_combinations().collect();
+    /// println!("All possible combinations: {:?}", all_combinations);
     /// ```
-    pub fn get_all_words(&self) -> Option<&Vec<String>> {
-        self.words.as_ref()
+    pub fn all_combinations(&self) -> AllCombinationsIter<'_> {
+        AllCombinationsIter::new(&self.slots)
     }
 
     /// Updates the word list used for filtering.
@@ -470,17 +546,41 @@ impl WordGenerator {
     ///     Slot::new(vec!['t', 'g']),
     /// ]);
     ///
-    /// // Generate all possible words
-    /// generator.generate();
-    ///
-    /// // Add a custom filter later
+    /// // Add a custom filter
     /// let custom_list: HashSet<String> = vec!["cat".to_string()].into_iter().collect();
     /// generator.set_word_list(custom_list);
     ///
-    /// // Now only "cat" will be returned (if it was generated)
-    /// let filtered_words: Vec<_> = generator.get_words().unwrap().collect();
+    /// // Now only "cat" will be returned (if it exists in the combinations)
+    /// let filtered_words: Vec<_> = generator.iter().collect();
     /// ```
     pub fn set_word_list(&mut self, word_list: HashSet<String>) {
         self.word_list = Some(word_list);
+    }
+    
+    /// For backwards compatibility with the old API
+    /// 
+    /// This method is deprecated and will be removed in a future version.
+    /// Use `iter()` instead.
+    #[deprecated(since = "next version", note = "Use iter() instead")]
+    pub fn generate(&mut self) {
+        // No-op, kept for backwards compatibility
+    }
+    
+    /// For backwards compatibility with the old API
+    /// 
+    /// This method is deprecated and will be removed in a future version.
+    /// Use `iter()` instead.
+    #[deprecated(since = "next version", note = "Use iter() instead")]
+    pub fn get_words(&self) -> Option<impl Iterator<Item = String> + '_> {
+        Some(self.iter())
+    }
+    
+    /// For backwards compatibility with the old API
+    /// 
+    /// This method is deprecated and will be removed in a future version.
+    /// Use `all_combinations().collect::<Vec<_>>()` instead.
+    #[deprecated(since = "next version", note = "Use all_combinations().collect::<Vec<_>>() instead")]
+    pub fn get_all_words(&self) -> Option<Vec<String>> {
+        Some(self.all_combinations().collect())
     }
 }
