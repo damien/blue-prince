@@ -29,16 +29,11 @@
 //! ];
 //!
 //! // Create a generator with the embedded word list
-//! let mut generator = WordGenerator::with_slots(slots);
-//!
-//! // Generate all possible words
-//! generator.generate();
+//! let generator = WordGenerator::with_slots(slots);
 //!
 //! // Get words that exist in the word list
-//! if let Some(words) = generator.get_words() {
-//!     for word in words {
-//!         println!("Valid word: {}", word);
-//!     }
+//! for word in generator.iter() {
+//!     println!("Valid word: {}", word);
 //! }
 //! ```
 
@@ -555,32 +550,5 @@ impl WordGenerator {
     /// ```
     pub fn set_word_list(&mut self, word_list: HashSet<String>) {
         self.word_list = Some(word_list);
-    }
-    
-    /// For backwards compatibility with the old API
-    /// 
-    /// This method is deprecated and will be removed in a future version.
-    /// Use `iter()` instead.
-    #[deprecated(since = "next version", note = "Use iter() instead")]
-    pub fn generate(&mut self) {
-        // No-op, kept for backwards compatibility
-    }
-    
-    /// For backwards compatibility with the old API
-    /// 
-    /// This method is deprecated and will be removed in a future version.
-    /// Use `iter()` instead.
-    #[deprecated(since = "next version", note = "Use iter() instead")]
-    pub fn get_words(&self) -> Option<impl Iterator<Item = String> + '_> {
-        Some(self.iter())
-    }
-    
-    /// For backwards compatibility with the old API
-    /// 
-    /// This method is deprecated and will be removed in a future version.
-    /// Use `all_combinations().collect::<Vec<_>>()` instead.
-    #[deprecated(since = "next version", note = "Use all_combinations().collect::<Vec<_>>() instead")]
-    pub fn get_all_words(&self) -> Option<Vec<String>> {
-        Some(self.all_combinations().collect())
     }
 }

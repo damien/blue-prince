@@ -27,9 +27,8 @@ fn generate_benchmark(c: &mut Criterion) {
                 &slots,
                 |b, slots| {
                     b.iter(|| {
-                        let mut generator = WordGenerator::with_no_filtering(slots.clone());
-                        generator.generate();
-                        generator.get_words().unwrap().count()
+                        let generator = WordGenerator::with_no_filtering(slots.clone());
+                        generator.iter().count()
                     })
                 },
             );
@@ -43,9 +42,8 @@ fn generate_benchmark(c: &mut Criterion) {
                 &slots,
                 |b, slots| {
                     b.iter(|| {
-                        let mut generator = WordGenerator::with_slots(slots.clone());
-                        generator.generate();
-                        generator.get_words().unwrap().count()
+                        let generator = WordGenerator::with_slots(slots.clone());
+                        generator.iter().count()
                     })
                 },
             );
@@ -75,9 +73,8 @@ fn filter_benchmark(c: &mut Criterion) {
             &word_list,
             |b, word_list| {
                 b.iter(|| {
-                    let mut generator = WordGenerator::new(slots.clone(), Some(word_list.clone()));
-                    generator.generate();
-                    generator.get_words().unwrap().count()
+                    let generator = WordGenerator::new(slots.clone(), Some(word_list.clone()));
+                    generator.iter().count()
                 })
             },
         );
@@ -86,9 +83,8 @@ fn filter_benchmark(c: &mut Criterion) {
     // Also benchmark with default wordlist
     group.bench_function("default_wordlist", |b| {
         b.iter(|| {
-            let mut generator = WordGenerator::with_slots(slots.clone());
-            generator.generate();
-            generator.get_words().unwrap().count()
+            let generator = WordGenerator::with_slots(slots.clone());
+            generator.iter().count()
         })
     });
 

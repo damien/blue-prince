@@ -20,15 +20,13 @@ fn test_iterator() {
 }
 
 #[test]
-fn test_generate() {
+fn test_word_generation() {
     // Use with_no_filtering to test without word filtering
-    let mut word_generator = WordGenerator::with_no_filtering(vec![
+    let word_generator = WordGenerator::with_no_filtering(vec![
         Slot::new(vec!['c', 'b', 'r']),
         Slot::new(vec!['a', 'i', 'o']),
         Slot::new(vec!['t', 's', 'e']),
     ]);
-
-    word_generator.generate();
 
     let expected_words = vec![
         "cat".to_string(),
@@ -61,19 +59,19 @@ fn test_generate() {
     ];
 
     // Convert iterator to Vec for comparison
-    let generated_words = word_generator.get_words().unwrap().collect::<Vec<_>>();
+    let generated_words = word_generator.iter().collect::<Vec<_>>();
     assert_eq!(generated_words, expected_words);
 }
 
 #[test]
-fn test_get_words_with_filtering() {
+fn test_words_with_filtering() {
     // Create a list of allowed words
     let word_list: HashSet<String> = ["cat".to_string(), "bot".to_string(), "rie".to_string()]
         .into_iter()
         .collect();
 
     // Create a generator with custom word list
-    let mut word_generator = WordGenerator::new(
+    let word_generator = WordGenerator::new(
         vec![
             Slot::new(vec!['c', 'b', 'r']),
             Slot::new(vec!['a', 'i', 'o']),
@@ -82,12 +80,9 @@ fn test_get_words_with_filtering() {
         Some(word_list.clone()),
     );
 
-    // Generate all possible words
-    word_generator.generate();
-
     // Only words in the word list should be returned
     // Convert to sorted Vec for predictable comparison
-    let mut generated_words = word_generator.get_words().unwrap().collect::<Vec<_>>();
+    let mut generated_words = word_generator.iter().collect::<Vec<_>>();
     generated_words.sort();
 
     let mut expected_words = word_list.into_iter().collect::<Vec<_>>();
@@ -99,16 +94,14 @@ fn test_get_words_with_filtering() {
 #[test]
 fn test_embedded_wordlist() {
     // Use default constructor with embedded wordlist
-    let mut word_generator = WordGenerator::with_slots(vec![
+    let word_generator = WordGenerator::with_slots(vec![
         Slot::new(vec!['c', 'b', 'r']),
         Slot::new(vec!['a', 'i', 'o']),
         Slot::new(vec!['t', 's', 'e']),
     ]);
 
-    word_generator.generate();
-
     // Get filtered words
-    let words = word_generator.get_words().unwrap().collect::<Vec<_>>();
+    let words = word_generator.iter().collect::<Vec<_>>();
 
     // Test that common words like "cat" are included in our filtered results
     // but uncommon combinations are filtered out
@@ -123,11 +116,8 @@ fn test_embedded_wordlist() {
 
     // These words should be filtered out if not in the wordlist
     let non_words = word_generator
-        .get_all_words()
-        .unwrap()
-        .iter()
+        .all_combinations()
         .filter(|w| !words.contains(w))
-        .cloned()
         .collect::<Vec<_>>();
 
     assert!(
