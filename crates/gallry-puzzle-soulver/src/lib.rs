@@ -1,9 +1,9 @@
 //! # Gallary Puzzle Soulver
-//! 
+//!
 //! This library helps solve word puzzles where each character position has a limited set of possible options.
-//! 
+//!
 //! ## Overview
-//! 
+//!
 //! Each gallery item has a corresponding word of arbitrary length.
 //! Each letter in the word has its own distinct set of possible characters.
 //! This library helps produce a list of all possible words that can be formed,
@@ -42,9 +42,9 @@
 //! }
 //! ```
 
-use std::ops::Deref;
+use anyhow::{Context, Result};
 use std::collections::HashSet;
-use anyhow::{Result, Context};
+use std::ops::Deref;
 
 // Embed the wordlist at compile time
 const EMBEDDED_WORDLIST: &str = include_str!("../data/words.txt");
@@ -96,14 +96,17 @@ impl Slot {
     /// let slot = Slot::new(vec!['a', 'b', 'c']);
     /// ```
     pub fn new(options: Vec<char>) -> Self {
-        Self { options, current: 0 }
+        Self {
+            options,
+            current: 0,
+        }
     }
 }
 
-impl Into<String> for Slot {
+impl From<Slot> for String {
     /// Converts the slot to a String, using the currently selected character.
-    fn into(self) -> String {
-        self.options[self.current].to_string()
+    fn from(val: Slot) -> Self {
+        val.options[val.current].to_string()
     }
 }
 
@@ -168,14 +171,13 @@ impl Iterator for Slot {
 /// Using a custom word list:
 ///
 /// ```
-/// use std::collections::HashSet;
 /// use gallry_puzzle_soulver::{Slot, WordGenerator};
+/// use std::collections::HashSet;
 ///
 /// // Create a custom word list
-/// let word_list: HashSet<String> = vec![
-///     "cat".to_string(),
-///     "dog".to_string(),
-/// ].into_iter().collect();
+/// let word_list: HashSet<String> = vec!["cat".to_string(), "dog".to_string()]
+///     .into_iter()
+///     .collect();
 ///
 /// // Create slots
 /// let slots = vec![
@@ -216,8 +218,8 @@ impl WordGenerator {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use gallry_puzzle_soulver::{Slot, WordGenerator};
+    /// use std::collections::HashSet;
     ///
     /// // Create a custom word list
     /// let word_list: HashSet<String> = vec!["cat".to_string()].into_iter().collect();
@@ -229,7 +231,7 @@ impl WordGenerator {
     ///         Slot::new(vec!['a', 'o']),
     ///         Slot::new(vec!['t', 'g']),
     ///     ],
-    ///     Some(word_list)
+    ///     Some(word_list),
     /// );
     /// ```
     pub fn new(slots: Vec<Slot>, word_list: Option<HashSet<String>>) -> Self {
@@ -241,18 +243,18 @@ impl WordGenerator {
                     .lines()
                     .map(|line| line.to_string())
                     .collect();
-                
+
                 Some(word_set)
             }
         };
-        
-        Self { 
-            slots, 
-            words: None, 
-            word_list
+
+        Self {
+            slots,
+            words: None,
+            word_list,
         }
     }
-    
+
     /// Creates a `WordGenerator` with the given slots and the default embedded word list.
     ///
     /// This is a convenience method equivalent to calling `new(slots, None)`.
@@ -275,7 +277,7 @@ impl WordGenerator {
     pub fn with_slots(slots: Vec<Slot>) -> Self {
         Self::new(slots, None)
     }
-    
+
     /// Creates a `WordGenerator` with the given slots and an empty word list.
     ///
     /// With an empty word list, no filtering will be applied, so `get_words()`
@@ -303,7 +305,7 @@ impl WordGenerator {
             word_list: Some(HashSet::new()),
         }
     }
-    
+
     /// Loads a custom word list from a file at runtime.
     ///
     /// This method is useful when you need to load different word lists
@@ -337,12 +339,9 @@ impl WordGenerator {
     pub fn load_word_list_from_file(&mut self, path: &str) -> Result<()> {
         let content = std::fs::read_to_string(path)
             .context(format!("Failed to read word list from {}", path))?;
-        
-        let word_set: HashSet<String> = content
-            .lines()
-            .map(|line| line.to_string())
-            .collect();
-        
+
+        let word_set: HashSet<String> = content.lines().map(|line| line.to_string()).collect();
+
         self.word_list = Some(word_set);
         Ok(())
     }
@@ -367,17 +366,16 @@ impl WordGenerator {
     /// generator.generate();
     /// ```
     pub fn generate(&mut self) {
-        self.words = Some(
-            self.slots.iter()
-                .map(|slot| slot.options.iter())
-                .fold(vec![String::new()], |acc, options| {
-                    acc.iter()
-                        .flat_map(|prefix| options.clone().map(move |&c| format!("{}{}", prefix, c)))
-                        .collect()
-                })
-        );
+        self.words = Some(self.slots.iter().map(|slot| slot.options.iter()).fold(
+            vec![String::new()],
+            |acc, options| {
+                acc.iter()
+                    .flat_map(|prefix| options.clone().map(move |&c| format!("{}{}", prefix, c)))
+                    .collect()
+            },
+        ));
     }
-    
+
     /// Returns an iterator over the generated words, filtered by the word list.
     ///
     /// If no word list is set, or if the word list is empty, all generated words
@@ -424,7 +422,7 @@ impl WordGenerator {
             })
         })
     }
-    
+
     /// Returns a reference to all generated words without filtering.
     ///
     /// This method is useful when you need access to all possible combinations,
@@ -440,10 +438,8 @@ impl WordGenerator {
     /// ```
     /// use gallry_puzzle_soulver::{Slot, WordGenerator};
     ///
-    /// let mut generator = WordGenerator::with_slots(vec![
-    ///     Slot::new(vec!['c', 'd']),
-    ///     Slot::new(vec!['a', 'o']),
-    /// ]);
+    /// let mut generator =
+    ///     WordGenerator::with_slots(vec![Slot::new(vec!['c', 'd']), Slot::new(vec!['a', 'o'])]);
     ///
     /// generator.generate();
     ///
@@ -455,7 +451,7 @@ impl WordGenerator {
     pub fn get_all_words(&self) -> Option<&Vec<String>> {
         self.words.as_ref()
     }
-    
+
     /// Updates the word list used for filtering.
     ///
     /// # Parameters
@@ -465,8 +461,8 @@ impl WordGenerator {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use gallry_puzzle_soulver::{Slot, WordGenerator};
+    /// use std::collections::HashSet;
     ///
     /// let mut generator = WordGenerator::with_no_filtering(vec![
     ///     Slot::new(vec!['c', 'd']),
