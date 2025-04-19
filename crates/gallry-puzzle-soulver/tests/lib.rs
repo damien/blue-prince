@@ -25,12 +25,13 @@ fn test_generate() {
             Slot::new(vec!['c', 'b', 'r']),
             Slot::new(vec!['a', 'i', 'o']),
             Slot::new(vec!['t', 's', 'e']),
-        ]
+        ],
+        Some(vec![]) // Empty word list means no filtering
     );
 
     word_generator.generate();
 
-    assert_eq!(word_generator.get_words(), Some(&vec![
+    let expected_words = vec![
         "cat".to_string(), "cas".to_string(), "cae".to_string(),
         "cit".to_string(), "cis".to_string(), "cie".to_string(),
         "cot".to_string(), "cos".to_string(), "coe".to_string(),
@@ -40,5 +41,32 @@ fn test_generate() {
         "rat".to_string(), "ras".to_string(), "rae".to_string(),
         "rit".to_string(), "ris".to_string(), "rie".to_string(),
         "rot".to_string(), "ros".to_string(), "roe".to_string()
-    ]));
+    ];
+    
+    assert_eq!(word_generator.get_words(), Some(expected_words));
+}
+
+#[test]
+fn test_get_words_with_filtering() {
+    // Create a list of allowed words
+    let word_list = vec![
+        "cat".to_string(), 
+        "bot".to_string(),
+        "rie".to_string(),
+    ];
+    
+    let mut word_generator = WordGenerator::new(
+        vec![
+            Slot::new(vec!['c', 'b', 'r']),
+            Slot::new(vec!['a', 'i', 'o']),
+            Slot::new(vec!['t', 's', 'e']),
+        ],
+        Some(word_list.clone())
+    );
+    
+    // Generate all possible words
+    word_generator.generate();
+    
+    // Only words in the word list should be returned
+    assert_eq!(word_generator.get_words(), Some(word_list));
 }
