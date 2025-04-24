@@ -5,9 +5,14 @@ edition = "2024"
 
 [dependencies]
 anyhow = { workspace = true }
+argh = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+
+[[bin]]
+name = "gallery-puzzle-soulver"
+path = "src/main.rs"
 
 [[bench]]
 name = "word_generator_benchmark"
